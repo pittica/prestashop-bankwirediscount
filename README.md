@@ -1,7 +1,7 @@
-# pittica/prestashop-pitticabankwirediscount
+# pittica/prestashop-bankwirediscount
 
-![License](https://img.shields.io/github/license/pittica/prestashop-pitticabankwirediscount)
-![Release](https://img.shields.io/github/v/release/pittica/prestashop-pitticabankwirediscount)
+![License](https://img.shields.io/github/license/pittica/prestashop-bankwirediscount)
+![Release](https://img.shields.io/github/v/release/pittica/prestashop-bankwirediscount)
 
 Bankwire discount for [PrestaShop](https://github.com/prestashop/prestashop).
 
