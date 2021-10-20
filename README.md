@@ -13,4 +13,4 @@ Based on ps_wirepayment module by [PrestaShop](https://github.com/prestashop/pre
 
 ## Copyright
 
-(c) 2020-2021, [Pittica S.r.l.](https://pittica.com).
+(c) 2021, [Pittica S.r.l.](https://pittica.com).
