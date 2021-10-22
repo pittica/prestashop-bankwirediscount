@@ -1,12 +1,12 @@
 {**
  * PrestaShop Module - pitticabankwirediscount
  *
- * Copyright 2020-2021 Pittica S.r.l.
+ * Copyright 2021 Pittica S.r.l.
  *
  * @category  Module
  * @package   Pittica/PrestaShop/BankwireDiscount
  * @author    Lucio Benini <info@pittica.com>
- * @copyright 2020-2021 Pittica S.r.l.
+ * @copyright 2021 Pittica S.r.l.
  * @license   http://opensource.org/licenses/LGPL-3.0  The GNU Lesser General Public License, version 3.0 ( LGPL-3.0 )
  * @link      https://github.com/pittica/prestashop-bankwirediscount
  *}

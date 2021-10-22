@@ -3,17 +3,27 @@
 /**
  * PrestaShop Module - pitticabankwirediscount
  *
- * Copyright 2020-2021 Pittica S.r.l.
+ * Copyright 2021 Pittica S.r.l.
  *
  * @category  Module
  * @package   Pittica/PrestaShop/BankwireDiscount
  * @author    Lucio Benini <info@pittica.com>
- * @copyright 2020-2021 Pittica S.r.l.
+ * @copyright 2021 Pittica S.r.l.
  * @license   http://opensource.org/licenses/LGPL-3.0  The GNU Lesser General Public License, version 3.0 ( LGPL-3.0 )
  * @link      https://github.com/pittica/prestashop-bankwirediscount
  */
 
-class PitticaBankwireDiscountValidationModuleFrontController extends ModuleFrontController
+/**
+ * Validation front controller.
+ * 
+ * @category Controller
+ * @package  Pittica/PrestaShop/CodFee
+ * @author   Lucio Benini <info@pittica.com>
+ * @license  http://opensource.org/licenses/LGPL-3.0  The GNU Lesser General Public License, version 3.0 ( LGPL-3.0 )
+ * @link     https://github.com/pittica/prestashop-bankwirediscount/blob/main/controllers/front/validation.php
+ * @since    1.0.0
+ */
+class pitticabankwirediscountvalidationModuleFrontController extends ModuleFrontController
 {
     /**
      * {@inheritDoc}

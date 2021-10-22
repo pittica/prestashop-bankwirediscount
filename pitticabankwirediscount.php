@@ -3,12 +3,12 @@
 /**
  * PrestaShop Module - pitticabankwirediscount
  *
- * Copyright 2020-2021 Pittica S.r.l.
+ * Copyright 2021 Pittica S.r.l.
  *
  * @category  Module
  * @package   Pittica/PrestaShop/BankwireDiscount
  * @author    Lucio Benini <info@pittica.com>
- * @copyright 2020-2021 Pittica S.r.l.
+ * @copyright 2021 Pittica S.r.l.
  * @license   http://opensource.org/licenses/LGPL-3.0  The GNU Lesser General Public License, version 3.0 ( LGPL-3.0 )
  * @link      https://github.com/pittica/prestashop-bankwirediscount
  */
@@ -41,7 +41,7 @@ class PitticaBankwireDiscount extends PaymentModule
     {
         $this->name             = 'pitticabankwirediscount';
         $this->tab              = 'payments_gateways';
-        $this->version          = '1.0.0';
+        $this->version          = '1.1.0';
         $this->author           = 'Pittica';
         $this->controllers      = array(
             'validation'
@@ -194,6 +194,7 @@ class PitticaBankwireDiscount extends PaymentModule
         $helper                           = new HelperForm();
         $helper->show_toolbar             = false;
         $helper->table                    = $this->table;
+        $helper->module                   = $this;
         $lang                             = new Language((int) Configuration::get('PS_LANG_DEFAULT'));
         $helper->default_form_language    = $lang->id;
         $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ?: 0;
@@ -237,10 +238,13 @@ class PitticaBankwireDiscount extends PaymentModule
                             'required' => true
                         ),
                         array(
-                            'type' => 'html',
+                            'type' => 'number',
                             'label' => $this->l('Discount percentage'),
                             'name' => 'PITTICA_BANKWIRE_DISCOUNT',
-                            'html_content' => '<div class="input-group"><input type="number" name="PITTICA_BANKWIRE_DISCOUNT" min="0" max="100" step="0.1" class="form-control" value="' . $config['PITTICA_BANKWIRE_DISCOUNT'] . '" /><span class="input-group-addon">%</span></div>'
+                            'min' => 0,
+                            'max' => 100,
+                            'step' => 0.1,
+                            'suffix' => '%'
                         )
                     ),
                     'submit' => array(
@@ -256,11 +260,14 @@ class PitticaBankwireDiscount extends PaymentModule
                     ),
                     'input' => array(
                         array(
-                            'type' => 'html',
-                            'label' => $this->l('Reservation period'),
+                            'type' => 'number',
+                            'label' => $this->l('Discount percentage'),
                             'desc' => $this->l('Number of days the items remain reserved'),
                             'name' => 'BANK_WIRE_RESERVATION_DAYS',
-                            'html_content' => '<div class="input-group"><input type="number" name="BANK_WIRE_RESERVATION_DAYS" min="0" max="365" step="1" class="form-control" value="' . $config['BANK_WIRE_RESERVATION_DAYS'] . '" /><span class="input-group-addon">' . $this->l('days') . '</span></div>'
+                            'min' => 0,
+                            'max' => 365,
+                            'step' => 1,
+                            'suffix' => $this->l('days')
                         ),
                         array(
                             'type' => 'textarea',
@@ -297,14 +304,23 @@ class PitticaBankwireDiscount extends PaymentModule
         ));
     }
 
+    /**
+     * Hook "actionFrontControllerSetMedia".
+     *
+     * @param array $params Hook parameters.
+     * 
+     * @return string
+     * @since  1.0.0
+     */
     public function hookActionFrontControllerSetMedia($params)
     {
         if ($this->context->controller->php_self === 'order' && (float) Configuration::get('PITTICA_BANKWIRE_DISCOUNT')) {
-            $cart        = $params['cart'];
-            $percentage  = (float) Configuration::get('PITTICA_BANKWIRE_DISCOUNT');
-            $discount    = ($cart->getOrderTotal(true, Cart::ONLY_PRODUCTS) / 100.0) * $percentage;
-            $discount_wt = ($cart->getOrderTotal(false, Cart::ONLY_PRODUCTS) / 100.0) * $percentage;
-            $total       = Tools::displayPrice($cart->getOrderTotal(true, Cart::BOTH) - $discount);
+            $cart              = $params['cart'];
+            $percentage        = (float) Configuration::get('PITTICA_BANKWIRE_DISCOUNT');
+            $discount_tax_incl = ($cart->getOrderTotal(true, Cart::ONLY_PRODUCTS) / 100.0) * $percentage;
+            $discount_tax_excl = ($cart->getOrderTotal(false, Cart::ONLY_PRODUCTS) / 100.0) * $percentage;
+            $order_total       = $cart->getOrderTotal(true, Cart::BOTH) - $discount_tax_incl;
+            $total             = Tools::displayPrice($order_total);
 
             $presenter = new CartPresenter();
             $presented_cart = $presenter->present($cart);
@@ -313,7 +329,7 @@ class PitticaBankwireDiscount extends PaymentModule
             $presented_cart['totals']['total_including_tax']['value'] = $total;
             
             if (!empty($presented_cart['subtotals']['tax'])) {
-                $presented_cart['subtotals']['tax']['value'] = Tools::displayPrice(($cart->getOrderTotal(true, Cart::BOTH) - $discount) - ($cart->getOrderTotal(false, Cart::BOTH) - $discount_wt));
+                $presented_cart['subtotals']['tax']['value'] = Tools::displayPrice($order_total - ($cart->getOrderTotal(false, Cart::BOTH) - $discount_tax_excl));
             }
 
             $this->smarty->assign(
@@ -328,9 +344,10 @@ class PitticaBankwireDiscount extends PaymentModule
 
             Media::addJsDef(array(
                 'pittica_bankwirediscount_label' => sprintf($this->l('Bankwire discount (%1$s)'), $percentage . '%'),
-                'pittica_bankwirediscount_discount' => Tools::displayPrice($discount),
+                'pittica_bankwirediscount_discount' => Tools::displayPrice($discount_tax_incl),
                 'pittica_bankwirediscount_total' => $total,
-                'pittica_bankwirediscount_totals' => $this->fetch('checkout/_partials/cart-summary-totals.tpl')
+                'pittica_bankwirediscount_totals' => $this->fetch('checkout/_partials/cart-summary-totals.tpl'),
+                'pittica_cart_lock' => false,
             ));
 
             $this->context->controller->registerJavascript(
@@ -343,6 +360,14 @@ class PitticaBankwireDiscount extends PaymentModule
         }
     }
     
+    /**
+     * Hook "paymentOptions".
+     *
+     * @param array $params Hook parameters.
+     * 
+     * @return string
+     * @since  1.0.0
+     */
     public function hookPaymentOptions($params)
     {
         if (!$this->active) {
@@ -385,6 +410,14 @@ class PitticaBankwireDiscount extends PaymentModule
         );
     }
     
+    /**
+     * Hook "paymentReturn".
+     *
+     * @param array $params Hook parameters.
+     * 
+     * @return string
+     * @since  1.0.0
+     */
     public function hookPaymentReturn($params)
     {
         if (!$this->active || !Configuration::get('BANK_WIRE_PAYMENT_INVITE')) {
@@ -424,6 +457,7 @@ class PitticaBankwireDiscount extends PaymentModule
     }
     
     /**
+     * Checks the currency of the given cart.
      * 
      * @param Cart $cart
      * 
@@ -480,8 +514,8 @@ class PitticaBankwireDiscount extends PaymentModule
         }
         
         $discount_percentage = (float) Configuration::get('PITTICA_BANKWIRE_DISCOUNT');
-        $discount            = ($cart->getOrderTotal(true, Cart::ONLY_PRODUCTS) / 100.0) * $discount_percentage;
-        $discount_wt         = ($cart->getOrderTotal(false, Cart::ONLY_PRODUCTS) / 100.0) * $discount_percentage;
+        $discount_tax_incl   = ($cart->getOrderTotal(true, Cart::ONLY_PRODUCTS) / 100.0) * $discount_percentage;
+        $discount_tax_excl   = ($cart->getOrderTotal(false, Cart::ONLY_PRODUCTS) / 100.0) * $discount_percentage;
         
         $order->id_customer         = (int) $cart->id_customer;
         $order->id_address_invoice  = (int) $cart->id_address_invoice;
@@ -505,13 +539,13 @@ class PitticaBankwireDiscount extends PaymentModule
         $order->gift_message    = $cart->gift_message;
         $order->mobile_theme    = $cart->mobile_theme;
         $order->conversion_rate = $currency->conversion_rate;
-        $amount_paid            = !$dont_touch_amount ? Tools::ps_round((float) $discount, $computingPrecision) : $amount_paid;
+        $amount_paid            = !$dont_touch_amount ? Tools::ps_round((float) $amount_paid, $computingPrecision) : $amount_paid;
         $order->total_paid_real = 0;
         
         $order->total_products           = Tools::ps_round((float) $cart->getOrderTotal(false, Cart::ONLY_PRODUCTS, $order->product_list, $carrierId), $computingPrecision);
         $order->total_products_wt        = Tools::ps_round((float) $cart->getOrderTotal(true, Cart::ONLY_PRODUCTS, $order->product_list, $carrierId), $computingPrecision);
-        $order->total_discounts_tax_excl = Tools::ps_round((float) abs($cart->getOrderTotal(false, Cart::ONLY_DISCOUNTS, $order->product_list, $carrierId) + $discount_wt), $computingPrecision);
-        $order->total_discounts_tax_incl = Tools::ps_round((float) abs($cart->getOrderTotal(true, Cart::ONLY_DISCOUNTS, $order->product_list, $carrierId) + $discount), $computingPrecision);
+        $order->total_discounts_tax_excl = Tools::ps_round((float) abs($cart->getOrderTotal(false, Cart::ONLY_DISCOUNTS, $order->product_list, $carrierId) + $discount_tax_excl), $computingPrecision);
+        $order->total_discounts_tax_incl = Tools::ps_round((float) abs($cart->getOrderTotal(true, Cart::ONLY_DISCOUNTS, $order->product_list, $carrierId) + $discount_tax_incl), $computingPrecision);
         $order->total_discounts          = $order->total_discounts_tax_incl;
         $order->total_shipping_tax_excl  = Tools::ps_round((float) $cart->getPackageShippingCost($carrierId, false, null, $order->product_list), $computingPrecision);
         $order->total_shipping_tax_incl  = Tools::ps_round((float) $cart->getPackageShippingCost($carrierId, true, null, $order->product_list), $computingPrecision);
@@ -525,8 +559,8 @@ class PitticaBankwireDiscount extends PaymentModule
         $order->total_wrapping_tax_incl = Tools::ps_round((float) abs($cart->getOrderTotal(true, Cart::ONLY_WRAPPING, $order->product_list, $carrierId)), $computingPrecision);
         $order->total_wrapping          = $order->total_wrapping_tax_incl;
         
-        $order->total_paid_tax_excl = Tools::ps_round((float) $cart->getOrderTotal(false, Cart::BOTH, $order->product_list, $carrierId) - $discount_wt, $computingPrecision);
-        $order->total_paid_tax_incl = Tools::ps_round((float) $cart->getOrderTotal(true, Cart::BOTH, $order->product_list, $carrierId) - $discount, $computingPrecision);
+        $order->total_paid_tax_excl = Tools::ps_round((float) $cart->getOrderTotal(false, Cart::BOTH, $order->product_list, $carrierId) - $discount_tax_excl, $computingPrecision);
+        $order->total_paid_tax_incl = Tools::ps_round((float) $cart->getOrderTotal(true, Cart::BOTH, $order->product_list, $carrierId) - $discount_tax_incl, $computingPrecision);
         $order->total_paid          = $order->total_paid_tax_incl;
         $order->round_mode          = Configuration::get('PS_PRICE_ROUND_MODE');
         $order->round_type          = Configuration::get('PS_ROUND_TYPE');
@@ -545,7 +579,7 @@ class PitticaBankwireDiscount extends PaymentModule
             throw new PrestaShopException('Can\'t save Order');
         }
         
-        if ($order_status->logable && number_format($cart_total_paid, $computingPrecision) != number_format($amount_paid, $computingPrecision)) {
+        if ($order_status->logable && number_format($cart_total_paid - $discount_tax_incl, $computingPrecision) != number_format($amount_paid, $computingPrecision)) {
             $id_order_state = Configuration::get('PS_OS_ERROR');
         }
         
